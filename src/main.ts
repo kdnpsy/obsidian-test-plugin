@@ -1,23 +1,32 @@
 import {App, Editor, MarkdownView, Modal, Notice, Plugin} from 'obsidian';
 import {DEFAULT_SETTINGS, MyPluginSettings, SampleSettingTab} from "./settings";
+import { YoutubeLinkModal } from "./ui/YoutubeLinkModal"; // 새로 추가
 
 // Remember to rename these classes and interfaces!
 
-export default class MyPlugin extends Plugin {
+export default class HelloWorldPlugin extends Plugin {
 	settings: MyPluginSettings;
 
 	async onload() {
 		await this.loadSettings();
 
 		// This creates an icon in the left ribbon.
-		this.addRibbonIcon('dice', 'Sample', (evt: MouseEvent) => {
+		this.addRibbonIcon('dice', 'Greet', (evt: MouseEvent) => {
 			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
+			new Notice('안녕하세요. 새로운 플러그인 테스트 중 입니다.');
 		});
 
 		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
 		const statusBarItemEl = this.addStatusBarItem();
 		statusBarItemEl.setText('Status bar text');
+
+		this.addCommand({
+            id: "show-hello-notice",
+            name: "Show Hello Notice",
+            callback: () => {
+                new Notice("Hello, Obsidian Plugin World!");
+            },
+        });
 
 		// This adds a simple command that can be triggered anywhere
 		this.addCommand({
@@ -56,6 +65,28 @@ export default class MyPlugin extends Plugin {
 			}
 		});
 
+        // 유튜브 링크 삽입 명령어 추가
+        this.addCommand({
+            id: 'insert-youtube-link',
+            name: '유튜브 링크 가운데 정렬하여 삽입',
+            editorCheckCallback: (checking: boolean, editor: Editor, view: MarkdownView) => {
+                if (view) {
+                    if (!checking) {
+                        new YoutubeLinkModal(this.app, (link) => {
+                            if (link) {
+                                const youtubeEmbed = this.createCenteredYoutubeEmbed(link);
+                                editor.replaceSelection(youtubeEmbed);
+                            } else {
+                                new Notice("유튜브 링크가 유효하지 않습니다.");
+                            }
+                        }).open();
+                    }
+                    return true;
+                }
+                return false;
+            }
+        });
+
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SampleSettingTab(this.app, this));
 
@@ -80,6 +111,20 @@ export default class MyPlugin extends Plugin {
 	async saveSettings() {
 		await this.saveData(this.settings);
 	}
+
+	createCenteredYoutubeEmbed(link: string): string {
+        const videoId = this.extractYoutubeVideoId(link);
+        if (videoId) {
+            return `<center><iframe width="560" height="315" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen></iframe></center>`;
+        }
+        return "";
+    }
+
+    extractYoutubeVideoId(url: string): string | null {
+        const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*$/;
+        const match = url.match(regExp);
+        return (match && match[2] && match[2].length === 11) ? match[2] : null;
+    }
 }
 
 class SampleModal extends Modal {
